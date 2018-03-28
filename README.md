@@ -1,20 +1,20 @@
 Role Name
 =========
 
-Deploy de aplicação tomcat 8.0.35
+Ansible Deployment Tomcat
 
-Descrição
+Description
 ------------
 
-Role de deploy em aplicação tomcat.
+Role to deploy application with tomcat.
 
-Dependências
+Dependency
 ------------
 
-É acionado pelo playbook com as variáveis necessárias
+It is triggered by playbook with variable required
 
 Author Information
 ------------------
 
 Alvaro Bacelar 
-alvaro@infoway-pi.com.br
+alvaro@alvarobacelar.com
