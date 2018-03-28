@@ -1,0 +1,17 @@
+<Context path="{{ contexto_nome }}" docBase="{{ path_war }}/" reloadable="true" >
+            <Resource name="{{ jdbc }}" auth="Container" type="javax.sql.DataSource"
+                       username="{{ user_db }}" password="{{ pass_db }}" driverClassName="{{ drive_db }}"
+                       url="{{ url_db }}"
+                       logAbandoned="false"
+                       removeAbandonedOnBorrow="true"
+                       removeAbandonedTimeout="300"
+                       validationQuery="Select 1"
+                       testOnBorrow="true"
+                       maxActive="40"
+                       maxIdle="30"
+                       minIdle="10"
+                       suspectTimeout="60"
+                       timeBetweenEvictionRunsMillis="30000"
+                       minEvictableIdleTimeMillis="60000"
+                       />
+</Context>

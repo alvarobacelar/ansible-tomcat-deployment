@@ -1,0 +1,81 @@
+---
+# task de deploy blue green ipmt/uniplam
+- name: Vericando o ambiente (realizando a conexão com o proxy reverso)
+  shell: ssh -p41442 root@45.79.153.94 'cat /tmp/{{ lognginx }}'
+  register: name
+  delegate_to: 127.0.0.1
+
+- name: Verificando a existencia do container {{ name.stdout }}
+  command: docker inspect {{ name.stdout }}
+  register: container
+  ignore_errors: yes
+
+- name: Remover container {{ name.stdout }} caso exista
+  command: docker rm -f {{ name.stdout }}
+  when: container.rc == 0
+
+- name: Criando o container green
+  command: docker run -dit --name {{ name.stdout }} --hostname {{ hostname_container }} -p {{ porta_app_green }}:8080 -v /home/logs/{{ container_name }}:/usr/local/tomcat/logs -v /home/files:/home/files -v /run/dbus/system_bus_socket:/run/dbus/system_bus_socket:ro --restart=always alvarobacelar/tomcatjheat
+  when: container.rc == 0 and name.stdout == nomegreen
+
+- name: Criando o container green
+  command: docker run -dit --name {{ name.stdout }} --hostname {{ hostname_container }} -p {{ porta_app_green }}:8080 -v /home/logs/{{ container_name }}:/usr/local/tomcat/logs -v /home/files:/home/files -v /run/dbus/system_bus_socket:/run/dbus/system_bus_socket:ro --restart=always alvarobacelar/tomcatjheat
+  when: container.rc == 1 and name.stdout == nomegreen
+
+- name: Criando o container blue
+  command: docker run -dit --name {{ name.stdout }} --hostname {{ hostname_container }} -p {{ porta_app_blue }}:8080 -v /home/logs/{{ container_name }}:/usr/local/tomcat/logs -v /home/files:/home/files -v /run/dbus/system_bus_socket:/run/dbus/system_bus_socket:ro --restart=always alvarobacelar/tomcatjheat
+  when: container.rc == 0 and name.stdout == nomeblue
+
+- name: Criando o container blue
+  command: docker run -dit --name {{ name.stdout }} --hostname {{ hostname_container }} -p {{ porta_app_blue }}:8080 -v /home/logs/{{ container_name }}:/usr/local/tomcat/logs -v /home/files:/home/files -v /run/dbus/system_bus_socket:/run/dbus/system_bus_socket:ro --restart=always alvarobacelar/tomcatjheat
+  when: container.rc == 1 and name.stdout == nomeblue
+
+- name: Copiando arquivo {{ contexto }} para o servidor
+  template:
+   src: contexto.j2
+   dest: /home/{{ contexto }}
+
+- name: Copiando o artefato *.war para o servidor hospedeiro docker
+  shell: scp -P 41442 root@45.56.97.221:/var/lib/jenkins/workspace/{{ projeto_jenkins }}/target/*.war /home/{{ arquivo_war }}
+
+- name: Copiando o arquivo server.xml para o container {{ name.stdout }}
+  shell: docker exec {{ name.stdout }} mkdir -p /usr/local/tomcat/conf/Catalina/localhost/
+
+- name: Copiando o arquivo xml para o container {{ name.stdout }}
+  command: docker cp /home/{{ contexto }} {{ name.stdout }}:/usr/local/tomcat/conf/Catalina/localhost/{{ contexto }}
+
+- name: Criando a pasta que será colocado o arquivo war
+  command: docker exec {{ name.stdout }} mkdir {{ path_war }}
+
+- name: Copiando o arquivo *.war do host hospedeiro para o docker
+  command: docker cp /home/{{ arquivo_war }} {{ name.stdout }}:{{ path_war }}
+
+- name: Descompactando o aruqivo war no container
+  shell: docker exec {{ name.stdout }} unzip {{ path_war }}/{{ arquivo_war }} -d {{ path_war }}
+
+- name: Copiando o arquivo probe para o servidor hospedeiro docker
+  copy:
+    src: /etc/ansible/roles/deploytomcatjenkins/files/probe.war
+    dest: /home/probe.war
+
+- name: Enviando o probe para o container docker
+  shell: docker cp /home/probe.war {{ name.stdout }}:/usr/local/tomcat/webapps/probe.war
+
+- name: Removendo o arquivo war do servidor hospedeiro
+  file:
+    path: /home/{{ arquivo_war }}
+    state: absent
+
+- pause:
+    minutes: 2
+    prompt: "Tomcat iniciado"
+
+- name: Removendo o container ocioso
+  command: docker rm -f {{ nomegreen }}
+  ignore_errors: yes
+  when: name.stdout == nomeblue
+
+- name: Remomendo o container ocioso blue
+  command: docker rm -f {{ nomeblue }}
+  ignore_errors: yes
+  when: name.stdout == nomegreen
